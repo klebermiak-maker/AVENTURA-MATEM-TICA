@@ -3,6 +3,7 @@ import confetti from 'canvas-confetti';
 import { ShieldAlert, Zap, Volume2, RotateCcw, Lightbulb, Flame, Award, ArrowRight } from 'lucide-react';
 import { GameSettings, OperationType, ProblemQuestion } from '../types';
 import { soundManager } from '../utils/audio';
+import { particleEngine } from '../utils/particleSystem';
 
 interface BossBattleScreenProps {
   questions: ProblemQuestion[];
@@ -40,6 +41,7 @@ export const BossBattleScreen: React.FC<BossBattleScreenProps> = ({
   const [bossAnimationState, setBossAnimationState] = useState<'idle' | 'hit' | 'defeated'>('idle');
   const [floatingDamage, setFloatingDamage] = useState<{ text: string; color: string; id: number } | null>(null);
   const [isShaking, setIsShaking] = useState<boolean>(false);
+  const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
 
   const currentQ = questions[currentQIndex % questions.length];
 
@@ -54,6 +56,10 @@ export const BossBattleScreen: React.FC<BossBattleScreenProps> = ({
   };
 
   useEffect(() => {
+    soundManager.stopSpeaking();
+    setBossHp(maxBossHp);
+    setCurrentQIndex(0);
+    setBossAnimationState('idle');
     setStep(1);
     setSelectedOp(null);
     setOpFeedback(null);
@@ -61,11 +67,40 @@ export const BossBattleScreen: React.FC<BossBattleScreenProps> = ({
     setSelectedAns(null);
     setShowHint(false);
     setUsedHint(false);
+    setIsSpeaking(false);
+  }, [questions]);
 
-    if (settings.speechEnabled && currentQ) {
-      soundManager.speakText(`Desafio do Monstro. ${currentQ.title}. ${currentQ.context} ${currentQ.questionText}`);
-    }
+  useEffect(() => {
+    soundManager.stopSpeaking();
+    setStep(1);
+    setSelectedOp(null);
+    setOpFeedback(null);
+    setAnsFeedback(null);
+    setSelectedAns(null);
+    setShowHint(false);
+    setUsedHint(false);
+    setIsSpeaking(false);
   }, [currentQIndex]);
+
+  useEffect(() => {
+    return () => {
+      soundManager.stopSpeaking();
+    };
+  }, []);
+
+  const handleToggleSpeak = () => {
+    if (!currentQ) return;
+    if (isSpeaking) {
+      soundManager.stopSpeaking();
+      setIsSpeaking(false);
+    } else {
+      setIsSpeaking(true);
+      const text = `Desafio do Monstro. ${currentQ.title}. ${currentQ.context} ${currentQ.questionText}`;
+      soundManager.speakText(text, () => {
+        setIsSpeaking(false);
+      });
+    }
+  };
 
   const handleSelectOp = (op: OperationType) => {
     if (!currentQ) return;
@@ -103,11 +138,12 @@ export const BossBattleScreen: React.FC<BossBattleScreenProps> = ({
       setBossHp(nextHp);
 
       if (!settings.reducedMotion) {
+        particleEngine.burstBossHit();
         confetti({
           particleCount: 50,
           spread: 70,
           origin: { y: 0.4 },
-          colors: ['#ef4444', '#f59e0b', '#8b5cf6'],
+          colors: ['#ef4444', '#f59e0b', '#8b5cf6', '#fde047'],
         });
       }
 
@@ -118,6 +154,7 @@ export const BossBattleScreen: React.FC<BossBattleScreenProps> = ({
         setBossAnimationState('defeated');
         soundManager.playVictory();
         if (!settings.reducedMotion) {
+          particleEngine.burstLevelVictory();
           confetti({
             particleCount: 150,
             spread: 120,
@@ -247,12 +284,14 @@ export const BossBattleScreen: React.FC<BossBattleScreenProps> = ({
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() =>
-                  soundManager.speakText(`${currentQ.title}. ${currentQ.context} ${currentQ.questionText}`)
-                }
-                className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 text-xs font-bold transition"
+                onClick={handleToggleSpeak}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                  isSpeaking
+                    ? 'bg-rose-900/80 text-rose-200 border border-rose-500 animate-pulse'
+                    : 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700'
+                }`}
               >
-                <Volume2 className="w-4 h-4" /> Ouvir
+                <Volume2 className="w-4 h-4" /> {isSpeaking ? 'Parar' : 'Ouvir'}
               </button>
               <button
                 onClick={() => {
@@ -302,7 +341,7 @@ export const BossBattleScreen: React.FC<BossBattleScreenProps> = ({
                     selectedOp === 'addition'
                       ? opFeedback === 'correct'
                         ? 'bg-emerald-600 border-emerald-400 text-white'
-                        : 'bg-rose-600 border-rose-400 text-white'
+                        : 'bg-rose-600 border-rose-400 text-white animate-shake'
                       : 'bg-emerald-950/80 hover:bg-emerald-900 border-emerald-600/50 text-emerald-300'
                   }`}
                 >
@@ -316,7 +355,7 @@ export const BossBattleScreen: React.FC<BossBattleScreenProps> = ({
                     selectedOp === 'subtraction'
                       ? opFeedback === 'correct'
                         ? 'bg-sky-600 border-sky-400 text-white'
-                        : 'bg-rose-600 border-rose-400 text-white'
+                        : 'bg-rose-600 border-rose-400 text-white animate-shake'
                       : 'bg-sky-950/80 hover:bg-sky-900 border-sky-600/50 text-sky-300'
                   }`}
                 >
@@ -330,7 +369,7 @@ export const BossBattleScreen: React.FC<BossBattleScreenProps> = ({
                     selectedOp === 'multiplication'
                       ? opFeedback === 'correct'
                         ? 'bg-amber-600 border-amber-400 text-white'
-                        : 'bg-rose-600 border-rose-400 text-white'
+                        : 'bg-rose-600 border-rose-400 text-white animate-shake'
                       : 'bg-amber-950/80 hover:bg-amber-900 border-amber-600/50 text-amber-300'
                   }`}
                 >
@@ -344,7 +383,7 @@ export const BossBattleScreen: React.FC<BossBattleScreenProps> = ({
                     selectedOp === 'division'
                       ? opFeedback === 'correct'
                         ? 'bg-purple-600 border-purple-400 text-white'
-                        : 'bg-rose-600 border-rose-400 text-white'
+                        : 'bg-rose-600 border-rose-400 text-white animate-shake'
                       : 'bg-purple-950/80 hover:bg-purple-900 border-purple-600/50 text-purple-300'
                   }`}
                 >
@@ -376,7 +415,13 @@ export const BossBattleScreen: React.FC<BossBattleScreenProps> = ({
                   <button
                     key={idx}
                     onClick={() => handleSelectAnswer(opt)}
-                    className="py-4 rounded-2xl bg-indigo-950 hover:bg-indigo-900 border-2 border-indigo-400 text-white font-black text-2xl shadow-lg transition active:scale-95 flex flex-col items-center justify-center gap-1"
+                    className={`py-4 rounded-2xl border-2 font-black text-2xl shadow-lg transition active:scale-95 flex flex-col items-center justify-center gap-1 ${
+                      selectedAns === opt
+                        ? opt === currentQ.correctAnswer
+                          ? 'bg-emerald-600 border-emerald-400 text-white'
+                          : 'bg-rose-600 border-rose-400 text-white animate-shake'
+                        : 'bg-indigo-950 hover:bg-indigo-900 border-indigo-400 text-white'
+                    }`}
                   >
                     <span>{opt}</span>
                     <span className="text-[10px] text-indigo-300 font-normal">{currentQ.unit}</span>

@@ -1,14 +1,13 @@
 import React from 'react';
-import { Volume2, VolumeX, Award, BarChart3, User, Eye, Sparkles, Heart } from 'lucide-react';
+import { Volume2, VolumeX, Award, Eye, Sparkles, Heart, FileText } from 'lucide-react';
 import { GameSettings, TeacherReportData } from '../types';
 
 interface NavbarProps {
   reportData: TeacherReportData;
   settings: GameSettings;
   onUpdateSettings: (newSettings: Partial<GameSettings>) => void;
-  onOpenReport: () => void;
   onOpenTrophies: () => void;
-  onOpenProfile: () => void;
+  onOpenReport: () => void;
   onGoToMap: () => void;
   currentScreen: 'map' | 'game' | 'boss';
   lives: number;
@@ -20,9 +19,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   reportData,
   settings,
   onUpdateSettings,
-  onOpenReport,
   onOpenTrophies,
-  onOpenProfile,
+  onOpenReport,
   onGoToMap,
   currentScreen,
   lives,
@@ -39,20 +37,20 @@ export const Navbar: React.FC<NavbarProps> = ({
       }`}
     >
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2 md:gap-4">
-        {/* Left: Brand & Student Avatar */}
+        {/* Left: Brand & Title */}
         <div className="flex items-center gap-2 md:gap-3">
           <button
             id="nav-logo-btn"
             onClick={onGoToMap}
-            className="flex items-center gap-2 text-left group focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-xl p-1"
+            className="flex items-center gap-2.5 text-left group focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-xl p-1"
             title="Voltar ao Mapa da Aventura"
           >
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl shadow-md group-hover:scale-105 transition-transform">
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-2xl shadow-md group-hover:scale-105 transition-transform">
               🧠
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-sm md:text-lg tracking-tight text-indigo-900 flex items-center gap-1">
+                <span className="font-extrabold text-base md:text-xl tracking-tight text-indigo-900 flex items-center gap-1">
                   Missão das 4 Operações
                 </span>
               </div>
@@ -60,20 +58,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 3º Ano do Ensino Fundamental
               </span>
             </div>
-          </button>
-
-          {/* Student Profile Pill */}
-          <button
-            id="nav-student-profile-btn"
-            onClick={onOpenProfile}
-            className="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-full py-1 px-3 text-xs md:text-sm font-bold text-indigo-900 transition-all"
-            title="Editar Perfil do Aluno"
-          >
-            <span className="text-base md:text-lg">{reportData.avatar}</span>
-            <span className="max-w-[80px] sm:max-w-[120px] truncate">{reportData.studentName}</span>
-            <span className="text-[10px] bg-indigo-200 text-indigo-800 px-1.5 py-0.5 rounded-full hidden md:inline">
-              {reportData.studentClass}
-            </span>
           </button>
         </div>
 
@@ -137,7 +121,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {settings.soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
           </button>
 
-          {/* Font Size & Accessibility */}
+          {/* Contrast Mode */}
           <button
             id="nav-toggle-contrast"
             onClick={() => onUpdateSettings({ highContrast: !settings.highContrast })}
@@ -152,31 +136,33 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Eye className="w-5 h-5" />
           </button>
 
+          {/* Teacher / Student Report Button */}
+          <button
+            id="nav-report-btn"
+            onClick={onOpenReport}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 text-indigo-800 border border-indigo-200 hover:bg-indigo-100 transition-all font-bold text-xs md:text-sm shadow-sm"
+            title="Relatório Pedagógico para Professores e Pais"
+            aria-label="Relatório Pedagógico"
+          >
+            <FileText className="w-4 h-4 text-indigo-600" />
+            <span className="hidden md:inline">Relatório</span>
+          </button>
+
           {/* Trophy Room Button */}
           <button
             id="nav-trophy-btn"
             onClick={onOpenTrophies}
-            className="p-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-all relative"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition-all font-bold text-xs md:text-sm shadow-sm relative"
             title="Salão de Troféus e Medalhas"
             aria-label="Troféus"
           >
-            <Award className="w-5 h-5" />
+            <Award className="w-5 h-5 text-amber-600" />
+            <span className="hidden sm:inline">Troféus</span>
             {reportData.unlockedBadges.length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center">
+              <span className="bg-amber-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
                 {reportData.unlockedBadges.length}
               </span>
             )}
-          </button>
-
-          {/* Teacher Report Button */}
-          <button
-            id="nav-teacher-report-btn"
-            onClick={onOpenReport}
-            className="flex items-center gap-1 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs md:text-sm font-bold shadow transition-all"
-            title="Painel e Relatório do Professor"
-          >
-            <BarChart3 className="w-4 h-4" />
-            <span className="hidden sm:inline">Relatório Professor</span>
           </button>
         </div>
       </div>

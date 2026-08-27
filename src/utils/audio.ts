@@ -38,7 +38,7 @@ class SoundManager {
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      this.ctx.resume().catch(() => {});
     }
   }
 
@@ -262,13 +262,38 @@ class SoundManager {
     this.isBgmPlaying = false;
   }
 
-  // Web Speech API Narration in PT-BR
-  public speakText(text: string) {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  // Web Speech API Narration in PT-BR (Only triggered upon explicit user request)
+  public speakText(text: string, onEnd?: () => void) {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      if (onEnd) onEnd();
+      return;
+    }
     window.speechSynthesis.cancel(); // Stop prior speech
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
 
-    // Clean text of emojis before reading
-    const cleanText = text.replace(/[\u{1F300}-\u{1FAFF}]|[\u{2600}-\u{27BF}]/gu, '').trim();
+    // Dynamic fallback to re-check voices if not loaded on startup
+    if (!this.speechVoice) {
+      const voices = window.speechSynthesis.getVoices();
+      const ptVoice =
+        voices.find((v) => v.lang.includes('pt-BR') || v.lang.includes('pt_BR')) ||
+        voices.find((v) => v.lang.startsWith('pt'));
+      if (ptVoice) {
+        this.speechVoice = ptVoice;
+      }
+    }
+
+    // Clean text of emojis and special symbols before reading
+    const cleanText = text
+      .replace(/[\u{1F300}-\u{1FAFF}]|[\u{2600}-\u{27BF}]/gu, '')
+      .replace(/[➕➖✖️➗⭐❓💡❤️]/g, '')
+      .trim();
+
+    if (!cleanText) {
+      if (onEnd) onEnd();
+      return;
+    }
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = 'pt-BR';
@@ -278,6 +303,14 @@ class SoundManager {
     if (this.speechVoice) {
       utterance.voice = this.speechVoice;
     }
+
+    utterance.onend = () => {
+      if (onEnd) onEnd();
+    };
+
+    utterance.onerror = () => {
+      if (onEnd) onEnd();
+    };
 
     window.speechSynthesis.speak(utterance);
   }

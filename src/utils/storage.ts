@@ -34,10 +34,33 @@ export function loadGameData(): TeacherReportData {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return getDefaultReportData();
     const parsed = JSON.parse(raw);
-    return { ...getDefaultReportData(), ...parsed };
+    const defaults = getDefaultReportData();
+    return {
+      ...defaults,
+      ...parsed,
+      phaseStars: { ...defaults.phaseStars, ...(parsed.phaseStars || {}) },
+      statsByOperation: {
+        addition: { ...defaults.statsByOperation.addition, ...(parsed.statsByOperation?.addition || {}) },
+        subtraction: { ...defaults.statsByOperation.subtraction, ...(parsed.statsByOperation?.subtraction || {}) },
+        multiplication: { ...defaults.statsByOperation.multiplication, ...(parsed.statsByOperation?.multiplication || {}) },
+        division: { ...defaults.statsByOperation.division, ...(parsed.statsByOperation?.division || {}) },
+      },
+    };
   } catch {
     return getDefaultReportData();
   }
+}
+
+export function resetGameData(): TeacherReportData {
+  const defaults = getDefaultReportData();
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (err) {
+      console.error('Error resetting game data', err);
+    }
+  }
+  return defaults;
 }
 
 export function saveGameData(data: TeacherReportData) {

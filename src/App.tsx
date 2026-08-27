@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   DifficultyLevel,
   GameSettings,
@@ -9,7 +9,7 @@ import {
 } from './types';
 import { PHASES } from './data/phases';
 import { getQuestionsForPhase, generateProceduralQuestion } from './data/questions';
-import { loadGameData, saveGameData, updateOperationStat, getDefaultReportData } from './utils/storage';
+import { loadGameData, saveGameData, updateOperationStat } from './utils/storage';
 import { soundManager } from './utils/audio';
 
 import { Navbar } from './components/Navbar';
@@ -19,8 +19,8 @@ import { BossBattleScreen } from './components/BossBattleScreen';
 import { RewardModal } from './components/RewardModal';
 import { GameOverModal } from './components/GameOverModal';
 import { TrophyRoomModal } from './components/TrophyRoomModal';
-import { StudentProfileModal } from './components/StudentProfileModal';
 import { TeacherReportModal } from './components/TeacherReportModal';
+import { ParticleCanvas } from './components/ParticleCanvas';
 
 export default function App() {
   // Persistence state
@@ -58,13 +58,6 @@ export default function App() {
 
   const [showGameOverModal, setShowGameOverModal] = useState<boolean>(false);
   const [showTrophyModal, setShowTrophyModal] = useState<boolean>(false);
-  const [showProfileModal, setShowProfileModal] = useState<boolean>(() => {
-    // Automatically prompt for student's name on first visit
-    return reportData.studentName === 'Explorador(a) Mirim';
-  });
-  const [isFirstProfilePrompt, setIsFirstProfilePrompt] = useState<boolean>(() => {
-    return reportData.studentName === 'Explorador(a) Mirim';
-  });
   const [showReportModal, setShowReportModal] = useState<boolean>(false);
 
   // Auto-save whenever reportData changes
@@ -110,19 +103,21 @@ export default function App() {
     setLivesLostInLevel(0);
 
     if (isBoss) {
-      // Gather 5 varied questions from all 4 operations for the boss
+      // Gather 7 varied questions from all 4 operations for the boss
       const mixedQ: ProblemQuestion[] = [
         generateProceduralQuestion(5, 1, 'addition'),
         generateProceduralQuestion(5, 2, 'subtraction'),
         generateProceduralQuestion(5, 2, 'multiplication'),
-        generateProceduralQuestion(5, 3, 'division'),
+        generateProceduralQuestion(5, 2, 'division'),
+        generateProceduralQuestion(5, 3, 'addition'),
         generateProceduralQuestion(5, 3, 'multiplication'),
+        generateProceduralQuestion(5, 3, 'division'),
       ];
       setQuestions(mixedQ);
       setCurrentScreen('boss');
       soundManager.playStart();
     } else {
-      const qList = getQuestionsForPhase(phase.id, level, 5);
+      const qList = getQuestionsForPhase(phase.id, level, 8);
       setQuestions(qList);
       setCurrentScreen('game');
       soundManager.playStart();
@@ -291,11 +286,25 @@ export default function App() {
     setComboStreak(0);
     setQuestionIndex(0);
     setLivesLostInLevel(0);
+    if (currentScreen === 'boss') {
+      const mixedQ: ProblemQuestion[] = [
+        generateProceduralQuestion(5, 1, 'addition'),
+        generateProceduralQuestion(5, 2, 'subtraction'),
+        generateProceduralQuestion(5, 2, 'multiplication'),
+        generateProceduralQuestion(5, 2, 'division'),
+        generateProceduralQuestion(5, 3, 'addition'),
+        generateProceduralQuestion(5, 3, 'multiplication'),
+        generateProceduralQuestion(5, 3, 'division'),
+      ];
+      setQuestions(mixedQ);
+    }
   };
 
   const handleGoToMap = () => {
     setShowRewardModal(false);
     setShowGameOverModal(false);
+    setShowReportModal(false);
+    setShowTrophyModal(false);
     setCurrentScreen('map');
   };
 
@@ -312,17 +321,6 @@ export default function App() {
     }
   };
 
-  const handleResetProgress = () => {
-    if (window.confirm('Tem certeza de que deseja reiniciar todo o progresso do aluno?')) {
-      const reset = getDefaultReportData();
-      setReportData(reset);
-      saveGameData(reset);
-      setShowReportModal(false);
-      setCurrentScreen('map');
-      soundManager.playStart();
-    }
-  };
-
   return (
     <div
       id="app-root-container"
@@ -330,17 +328,16 @@ export default function App() {
         settings.highContrast ? 'bg-black text-white' : 'bg-slate-50 text-slate-900'
       }`}
     >
+      {/* 2D/3D Particle Celebration Canvas Layer */}
+      <ParticleCanvas />
+
       {/* Top Main Navigation */}
       <Navbar
         reportData={reportData}
         settings={settings}
         onUpdateSettings={handleUpdateSettings}
-        onOpenReport={() => setShowReportModal(true)}
         onOpenTrophies={() => setShowTrophyModal(true)}
-        onOpenProfile={() => {
-          setIsFirstProfilePrompt(false);
-          setShowProfileModal(true);
-        }}
+        onOpenReport={() => setShowReportModal(true)}
         onGoToMap={handleGoToMap}
         currentScreen={currentScreen}
         lives={lives}
@@ -417,32 +414,11 @@ export default function App() {
         />
       )}
 
-      {/* Student Profile Modal */}
-      {showProfileModal && (
-        <StudentProfileModal
-          reportData={reportData}
-          isFirstTime={isFirstProfilePrompt}
-          onSave={(name, studentClass, avatar) => {
-            setReportData((prev) => ({
-              ...prev,
-              studentName: name,
-              studentClass: studentClass,
-              avatar: avatar,
-            }));
-            setIsFirstProfilePrompt(false);
-          }}
-          onClose={() => {
-            setShowProfileModal(false);
-            setIsFirstProfilePrompt(false);
-          }}
-        />
-      )}
-
-      {/* Teacher Diagnostic Report Modal */}
+      {/* Pedagogical Performance Report Modal */}
       {showReportModal && (
         <TeacherReportModal
           reportData={reportData}
-          onResetProgress={handleResetProgress}
+          onUpdateReportData={(updated) => setReportData(updated)}
           onClose={() => setShowReportModal(false)}
         />
       )}

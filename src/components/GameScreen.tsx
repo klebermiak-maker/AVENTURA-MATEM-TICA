@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { DifficultyLevel, GameSettings, OperationType, PhaseConfig, ProblemQuestion } from '../types';
 import { soundManager } from '../utils/audio';
+import { particleEngine } from '../utils/particleSystem';
 
 interface GameScreenProps {
   phase: PhaseConfig;
@@ -82,6 +83,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
 
   // Reset states when question changes
   useEffect(() => {
+    soundManager.stopSpeaking();
     setStep(1);
     setSelectedOp(null);
     setOpFeedback(null);
@@ -91,19 +93,23 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     setShowHint(false);
     setUsedHintThisQuestion(false);
     setIsSpeaking(false);
-
-    // Auto narration if enabled
-    if (settings.speechEnabled && currentQ) {
-      handleReadQuestion();
-    }
   }, [currentIndex, currentQ]);
 
-  // Read question aloud using Web Speech API in Portuguese
+  // Clean up speech when unmounting
+  useEffect(() => {
+    return () => {
+      soundManager.stopSpeaking();
+    };
+  }, []);
+
+  // Read question aloud using Web Speech API in Portuguese (Only when explicitly clicked)
   const handleReadQuestion = () => {
     if (!currentQ) return;
     setIsSpeaking(true);
     const speechText = `${currentQ.title}. ${currentQ.context} ${currentQ.questionText}`;
-    soundManager.speakText(speechText);
+    soundManager.speakText(speechText, () => {
+      setIsSpeaking(false);
+    });
   };
 
   const handleStopSpeech = () => {
@@ -151,6 +157,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
       showFloat('✨ OPERAÇÃO CORRETA! (+10 pts)', 'text-emerald-600 bg-emerald-100 border-emerald-300');
 
       if (!settings.reducedMotion) {
+        particleEngine.burstCorrectOperation();
         confetti({
           particleCount: 40,
           spread: 70,
@@ -192,20 +199,21 @@ export const GameScreen: React.FC<GameScreenProps> = ({
       const totalPoints = opPoints + ansPoints + noHintBonus;
 
       if (!settings.reducedMotion) {
-        // Multi-directional celebratory confetti cannons
+        // Multi-directional celebratory confetti cannons and jumping gold coins
+        particleEngine.burstCorrectCalculation(undefined, undefined, noHintBonus > 0);
         confetti({
           particleCount: 60,
           angle: 60,
           spread: 70,
           origin: { x: 0.2, y: 0.6 },
-          colors: ['#3b82f6', '#10b981', '#f59e0b', '#ec4899'],
+          colors: ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#fde047'],
         });
         confetti({
           particleCount: 60,
           angle: 120,
           spread: 70,
           origin: { x: 0.8, y: 0.6 },
-          colors: ['#3b82f6', '#10b981', '#f59e0b', '#ec4899'],
+          colors: ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#fde047'],
         });
       }
 
@@ -317,7 +325,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
       {/* Main Problem Situation Card */}
       <div
         className={`w-full max-w-4xl bg-white rounded-3xl p-5 sm:p-8 shadow-xl border-2 border-indigo-100 mb-6 relative overflow-hidden transition-all duration-300 ${
-          isShaking ? 'animate-[shake_0.4s_ease-in-out]' : ''
+          isShaking ? 'animate-shake' : ''
         }`}
       >
         {/* Top Badges & Narration Buttons */}
@@ -452,7 +460,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                   selectedOp === 'addition'
                     ? opFeedback === 'correct'
                       ? 'bg-emerald-500 border-emerald-600 text-white animate-bounce'
-                      : 'bg-rose-500 border-rose-600 text-white'
+                      : 'bg-rose-500 border-rose-600 text-white animate-shake'
                     : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800 hover:-translate-y-1'
                 }`}
               >
@@ -471,7 +479,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                   selectedOp === 'subtraction'
                     ? opFeedback === 'correct'
                       ? 'bg-sky-500 border-sky-600 text-white animate-bounce'
-                      : 'bg-rose-500 border-rose-600 text-white'
+                      : 'bg-rose-500 border-rose-600 text-white animate-shake'
                     : 'bg-sky-50 hover:bg-sky-100 border-sky-300 text-sky-800 hover:-translate-y-1'
                 }`}
               >
@@ -490,7 +498,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                   selectedOp === 'multiplication'
                     ? opFeedback === 'correct'
                       ? 'bg-amber-500 border-amber-600 text-white animate-bounce'
-                      : 'bg-rose-500 border-rose-600 text-white'
+                      : 'bg-rose-500 border-rose-600 text-white animate-shake'
                     : 'bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-800 hover:-translate-y-1'
                 }`}
               >
@@ -509,7 +517,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                   selectedOp === 'division'
                     ? opFeedback === 'correct'
                       ? 'bg-purple-500 border-purple-600 text-white animate-bounce'
-                      : 'bg-rose-500 border-rose-600 text-white'
+                      : 'bg-rose-500 border-rose-600 text-white animate-shake'
                     : 'bg-purple-50 hover:bg-purple-100 border-purple-300 text-purple-800 hover:-translate-y-1'
                 }`}
               >
@@ -635,14 +643,22 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && customInput) {
-                      handleSelectAnswer(parseInt(customInput, 10));
+                      const val = parseInt(customInput, 10);
+                      if (!isNaN(val)) {
+                        handleSelectAnswer(val);
+                      }
                     }
                   }}
                 />
                 <button
                   id="btn-submit-custom-calc"
-                  disabled={!customInput}
-                  onClick={() => handleSelectAnswer(parseInt(customInput, 10))}
+                  disabled={!customInput || isNaN(parseInt(customInput, 10))}
+                  onClick={() => {
+                    const val = parseInt(customInput, 10);
+                    if (!isNaN(val)) {
+                      handleSelectAnswer(val);
+                    }
+                  }}
                   className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-black rounded-2xl text-lg shadow-lg transition"
                 >
                   Conferir Resposta

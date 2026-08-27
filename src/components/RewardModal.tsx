@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { Star, Trophy, ArrowRight, MapPin, Sparkles } from 'lucide-react';
 import { soundManager } from '../utils/audio';
+import { particleEngine } from '../utils/particleSystem';
 
 interface RewardModalProps {
   phaseName: string;
@@ -26,6 +27,7 @@ export const RewardModal: React.FC<RewardModalProps> = ({
 }) => {
   useEffect(() => {
     soundManager.playLevelPass();
+    particleEngine.burstLevelVictory();
     confetti({
       particleCount: 100,
       spread: 90,
