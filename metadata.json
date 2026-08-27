@@ -1,0 +1,6 @@
+{
+  "name": "Missão das Quatro Operações",
+  "description": "Jogo educativo gamificado de matemática para alunos do 3º ano do Ensino Fundamental com resolução de situações-problema nas quatro operações.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
